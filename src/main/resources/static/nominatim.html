@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css"
+          integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=="
+          crossorigin=""/>
+
+    <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"
+            integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=="
+            crossorigin=""></script>
+    
+    <style>
+        #mapid {
+            width: 600px;
+            height: 400px;
+        }
+    </style>
+    
+</head>
+<body>
+    <div id="mapid"></div>
+    
+    <br>
+    
+    <script>
+
+        var geoJSON;
+        
+        var limit = 50;
+        
+        function json_callback(json) {
+
+            var jsonStr = JSON.stringify(json, null, '\t');
+            console.log("======================================================================");
+            console.log(jsonStr);
+            console.log("======================================================================");
+            
+            var arrayLength = json.length;
+            
+            console.log("arrayLength = " + arrayLength);
+            
+            if (arrayLength >= limit) {
+                alert("Слишком много фрагментов");
+            }
+            
+            var features = [];
+            
+            for (var i = 0; i < arrayLength; i++) {
+
+                var osmObject = json[i];
+
+                if (osmObject.osm_type === "way") {
+                    var feature = {
+                        type: "Feature",
+                        properties: {n: 0},
+                        geometry: osmObject.geojson
+                    };
+
+                    features.push(feature);
+                } else {
+                    console.log("osm_type: " + osmObject.osm_type + ", class: " + osmObject.class + ", type: " + osmObject.type);
+                }
+            }
+
+            if (geoJSON) {
+                geoJSON.removeFrom(myMap);
+                geoJSON = undefined;
+            }
+
+            if (features.length > 0) {
+                
+                var firstObject = json[0];
+                
+                myMap.setView([firstObject.lat, firstObject.lon], 12);
+                
+                console.log(JSON.stringify(features, null, '\t'));
+                
+                geoJSON = L.geoJSON(
+
+                    features,
+
+                    {
+                        style: function(feature) {
+
+                            var r = Math.round(Math.random() * 255);
+                            var g = Math.round(Math.random() * 255);
+                            var b = Math.round(Math.random() * 255);
+
+                            var color = "#" + hex(r) + hex(g) + hex(b);
+
+                            //console.log(color);
+
+                            return {color: color};
+                        }
+                    }
+                );
+                
+                geoJSON.addTo(myMap);
+            }
+        }
+        
+        function search() {
+            
+            var searchStringElement = document.getElementById("searchString");
+            
+            var searchString = searchStringElement.value;
+            
+            var searchStringEncoded = encodeURIComponent(searchString);
+            
+            var scriptSrc =
+                'http://nominatim.openstreetmap.org/search.php' +
+                '?q=' + searchStringEncoded +
+                '&format=json' +
+                '&limit=' + limit + 
+                '&dedupe=1' +
+                '&polygon_geojson=1' +
+                '&json_callback=json_callback';
+
+            var script = document.createElement("script");
+
+            script.type = "text/javascript";
+            script.src = scriptSrc;
+            
+            document.head.appendChild(script);
+        }
+
+        function searchKeyDown() {
+            if(event.key === 'Enter') {
+                search();
+            }
+        }
+    </script>
+
+    <input id="searchString" type="text" size="84" onkeydown="searchKeyDown(this)" value="Советское шоссе новосибирск">
+
+    <button type="button" onclick="search()">Search</button>
+
+    <script>
+
+        function hex(d) {
+            var hex = Number(d).toString(16);
+            while (hex.length < 2) {
+                hex = "0" + hex;
+            }
+            return hex;
+        }
+        
+        //var myMap = L.map('mapid').setView([51.505, -0.09], 13);
+        var myMap = L.map('mapid').setView([54.9050072, 82.9809055], 12);
+
+        var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        
+        //var osmUrl = 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}';
+        
+        L.tileLayer(
+            
+            osmUrl, 
+            
+            {
+                /*attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',*/
+                maxZoom: 18,
+                id: 'mapbox.streets',
+                accessToken: 'pk.eyJ1IjoicHRydHMiLCJhIjoiY2phczBqdnBsNW0xejJ3bmk5bXRlczA0ZiJ9.lf3gvikSr0jd3C4rZtEqHw'
+            }
+        ).addTo(myMap);
+
+        //var marker = L.marker([51.5, -0.09]).addTo(myMap);
+
+        /*var circle = L.circle([51.508, -0.11], {
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.5,
+            radius: 500
+        }).addTo(myMap);*/
+
+        /*var polygon = L.polygon([
+            [51.509, -0.08],
+            [51.503, -0.06],
+            [51.51, -0.047]
+        ]).addTo(myMap);*/
+
+
+
+
+        /*marker.bindPopup("<b>Hello world!</b><br>I am a popup.").openPopup();
+        circle.bindPopup("I am a circle.");
+        polygon.bindPopup("I am a polygon.");*/
+
+
+        /*var map;
+        var ajaxRequest;
+        var plotlist;
+        var plotlayers=[];
+
+        function initmap() {
+            // set up the map
+            map = new L.Map('map');
+
+            // create the tile layer with correct attribution
+            var osmUrl='http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+            var osmAttrib='Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors';
+            var osm = new L.TileLayer(osmUrl, {minZoom: 8, maxZoom: 12, attribution: osmAttrib});
+
+            // start the map in South-East England
+            map.setView(new L.LatLng(51.3, 0.7),9);
+            map.addLayer(osm);
+        }*/
+        
+    </script>
+</body>
+</html>

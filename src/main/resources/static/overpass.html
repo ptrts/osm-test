@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css"
+          integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=="
+          crossorigin=""/>
+
+    <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"
+            integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=="
+            crossorigin=""></script>
+    
+    <style>
+        #mapid {
+            width: 600px;
+            height: 400px;
+        }
+    </style>
+    
+</head>
+<body>
+    <div id="mapid" style="width:100%; height: 550px"></div>
+    
+    <br>
+    
+    <script>
+
+        var geoJSON;
+        
+        function showFeatures(features) {
+
+            if (geoJSON) {
+                geoJSON.removeFrom(myMap);
+                geoJSON = undefined;
+            }
+
+            if (features.length > 0) {
+
+                var firstFeature = features[0];
+
+                var geometry = firstFeature.geometry;
+
+                var coordinates = geometry.coordinates;
+                
+                var firstCoordinates = coordinates[0];
+
+                var lon = firstCoordinates[1];
+                
+                var lat = firstCoordinates[0];
+                
+                myMap.setView([lon, lat], 12);
+
+                geoJSON = L.geoJSON(
+                    features,
+
+                    {
+                        style: function (feature) {
+
+                            // var r = Math.round(Math.random() * 255);
+                            // var g = Math.round(Math.random() * 255);
+                            // var b = Math.round(Math.random() * 255);
+                            // var color = "#" + hex(r) + hex(g) + hex(b);
+                            var color = "#0000FF";
+
+                            //console.log(color);
+
+                            return {color: color};
+                        }
+                    }
+                );
+
+                geoJSON.addTo(myMap);
+            }
+        }
+
+        function get(theUrl, callback) {
+            
+            var xmlHttp = new XMLHttpRequest();
+            
+            xmlHttp.onreadystatechange = function() {
+                if (xmlHttp.readyState === 4) {
+                    if (xmlHttp.status === 200) {
+                        callback(xmlHttp.responseText);
+                    } else {
+                        alert("Сервер вернул ошибку: " + xmlHttp.status);
+                    }
+                }
+            };
+            
+            xmlHttp.open("GET", theUrl, true); 
+            xmlHttp.send(null);
+        }
+        
+        function buildQl() {
+            
+            var searchString = document.getElementById("searchString").value;
+            var regexp = document.getElementById("regexp").checked;
+            var ref = document.getElementById("ref").checked;
+
+            var parts = searchString.split(/\s*,\s*/);
+
+            if (parts.length === 0) {
+                alert("Нужно указать строку поиска");
+                return;
+            }
+
+            if (parts.length > 2) {
+                alert("Слишком много запятых");
+                return;
+            }
+
+            var road = parts[0];
+
+            var area;
+            if (parts.length === 2) {
+                area = parts[1];
+            }
+
+            var ql = '[out:json];\n';
+
+            if (area) {
+                ql += '(area[name="' + area + '"];)->.a;\n';
+            }
+
+            ql += '(\n';
+            ql += '    way\n';
+
+            if (area) {
+                ql += '        (area.a)\n';
+            }
+
+            ql += '        ["highway"]\n';
+            
+            var tag;
+            if (ref) {
+                tag = "ref";
+            } else {
+                tag = "name";
+            }
+            
+            if (regexp) {
+                ql += '        ["' + tag + '"~"\\\\b' + road + '\\\\b",i];\n'
+            } else {
+                ql += '        ["' + tag + '"="' + road + '"];\n'
+            }
+
+            ql += '    >;\n';
+            ql += ');\n';
+            ql += 'out meta;\n';
+            
+            return ql;
+        }
+        
+        function search() {
+
+            var ql = document.getElementById("ql").value;
+            
+            var encodedQl = encodeURIComponent(ql);
+            
+            var service = "http://overpass-api.de/api/interpreter";
+            // var service = "http://overpass.osm.rambler.ru/cgi/interpreter";
+            
+            var url = service + "?data=" + encodedQl;
+            
+            document.getElementById("status").textContent = " Запрос пошел...";
+
+            get(url, function (jsonStr) {
+
+                document.getElementById("status").textContent = "";
+                
+                var json = JSON.parse(jsonStr);
+                
+                var elements = json.elements;
+
+                var arrayLength = elements.length;
+                
+                if (arrayLength === 0) {
+                    alert("Пусто!");
+                }
+                
+                var allNodes = {};
+                
+                var wayFeatures = [];
+
+                for (var i = 0; i < arrayLength; i++) {
+                    
+                    var element = elements[i];
+                    
+                    if (element.type === "node") {
+                        
+                        var node = element;
+                        
+                        allNodes[node.id] = [
+                            node.lon,
+                            node.lat
+                        ];
+                        
+                    } else if (element.type = "way") {
+                        
+                        var way = element;
+                        
+                        var wayNodes = [];
+                        
+                        var wayNodeIds = way.nodes;
+                        
+                        for (var j = 0; j < wayNodeIds.length; j++) {
+                            
+                            var wayNodeId = wayNodeIds[j];
+                            
+                            var wayNode = allNodes[wayNodeId];
+
+                            wayNodes.push(wayNode);
+                        }
+                        
+                        wayFeatures.push({
+                            type: "Feature",
+                            properties: way.tags,
+                            geometry: {
+                                type: "LineString",
+                                coordinates: wayNodes
+                            }
+                        });
+                    }
+                }
+                
+                console.log(JSON.stringify(wayFeatures, null, '\t'));
+                
+                showFeatures(wayFeatures);
+            });
+        }
+
+        function searchKeyDown() {
+            if(event.key === 'Enter') {
+                search();
+            }
+        }
+
+        function refreshQl() {
+            document.getElementById("ql").value = buildQl();
+        }
+    </script>
+    
+    <p>
+        <input id="searchString" type="text" size="84" oninput="refreshQl()" onkeydown="searchKeyDown(this)" value="Советское шоссе, Новосибирск">
+        <label for="regexp">regexp:</label>
+        <input id="regexp" type="checkbox" onchange="refreshQl()">
+        <label for="ref">ref:</label>
+        <input id="ref" type="checkbox" onchange="refreshQl()">
+    </p>
+    
+    <button type="button" onclick="search()">Search</button>
+    
+    <span id="status" style="color: red;"></span>
+    
+    <p>
+        <textarea id="ql" cols="70" rows="15"></textarea>
+    </p>
+    
+    <script>
+        function test() {
+            alert('\\b');
+        }
+    </script>
+    
+    <!--<p>
+        <button type="button" onclick="test()">test</button>
+    </p>-->
+
+    <script>
+
+        function hex(d) {
+            var hex = Number(d).toString(16);
+            while (hex.length < 2) {
+                hex = "0" + hex;
+            }
+            return hex;
+        }
+        
+        //var myMap = L.map('mapid').setView([51.505, -0.09], 13);
+        var myMap = L.map('mapid').setView([54.9050072, 82.9809055], 12);
+
+        var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        
+        //var osmUrl = 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}';
+        
+        L.tileLayer(
+            
+            osmUrl, 
+            
+            {
+                /*attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',*/
+                maxZoom: 18,
+                id: 'mapbox.streets',
+                accessToken: 'pk.eyJ1IjoicHRydHMiLCJhIjoiY2phczBqdnBsNW0xejJ3bmk5bXRlczA0ZiJ9.lf3gvikSr0jd3C4rZtEqHw'
+            }
+        ).addTo(myMap);
+
+        //var marker = L.marker([51.5, -0.09]).addTo(myMap);
+
+        /*var circle = L.circle([51.508, -0.11], {
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.5,
+            radius: 500
+        }).addTo(myMap);*/
+
+        /*var polygon = L.polygon([
+            [51.509, -0.08],
+            [51.503, -0.06],
+            [51.51, -0.047]
+        ]).addTo(myMap);*/
+
+
+
+
+        /*marker.bindPopup("<b>Hello world!</b><br>I am a popup.").openPopup();
+        circle.bindPopup("I am a circle.");
+        polygon.bindPopup("I am a polygon.");*/
+
+
+        /*var map;
+        var ajaxRequest;
+        var plotlist;
+        var plotlayers=[];
+
+        function initmap() {
+            // set up the map
+            map = new L.Map('map');
+
+            // create the tile layer with correct attribution
+            var osmUrl='http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+            var osmAttrib='Map data © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors';
+            var osm = new L.TileLayer(osmUrl, {minZoom: 8, maxZoom: 12, attribution: osmAttrib});
+
+            // start the map in South-East England
+            map.setView(new L.LatLng(51.3, 0.7),9);
+            map.addLayer(osm);
+        }*/
+        
+        refreshQl();
+        
+    </script>
+</body>
+</html>

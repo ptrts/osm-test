@@ -1,0 +1,73 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API",
+  "osm3s": {
+    "timestamp_osm_base": "2017-12-05T09:22:03Z",
+    "copyright": "The data included in this document is from www.openstreetmap.org. The data is made available under ODbL."
+  },
+  "elements": [
+    {
+      "type": "node",
+      "id": 279470713,
+      "lat": 55.0722706,
+      "lon": 82.9189601
+    },
+    {
+      "type": "node",
+      "id": 288922049,
+      "lat": 55.0738547,
+      "lon": 82.9164564
+    },
+    {
+      "type": "node",
+      "id": 672592022,
+      "lat": 55.0730767,
+      "lon": 82.9177001
+    },
+    {
+      "type": "node",
+      "id": 1670326833,
+      "lat": 55.0723520,
+      "lon": 82.9188649,
+      "tags": {
+        "highway": "crossing"
+      }
+    },
+    {
+      "type": "node",
+      "id": 1670326874,
+      "lat": 55.0724328,
+      "lon": 82.9187439
+    },
+    {
+      "type": "node",
+      "id": 1670326975,
+      "lat": 55.0726228,
+      "lon": 82.9184501
+    },
+    {
+      "type": "node",
+      "id": 2431201051,
+      "lat": 55.0728752,
+      "lon": 82.9180173
+    },
+    {
+      "type": "way",
+      "id": 51993170,
+      "nodes": [
+        279470713,
+        1670326833,
+        1670326874,
+        1670326975,
+        2431201051,
+        672592022,
+        288922049
+      ],
+      "tags": {
+        "addr:postcode": "630047",
+        "highway": "residential",
+        "name": "Анодная улица"
+      }
+    }
+  ]
+}

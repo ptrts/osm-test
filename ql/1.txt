@@ -1,0 +1,15 @@
+(node(51.249,7.148,51.251,7.152);<;);out meta;
+
+
+(way["highway"="trunk"]["name"~"Иртыш",i];>;);out meta;
+
+
+
+(way["highway"="residential"]["name"="Анодная улица"];>;);out meta;
+
+
+highway	residential
+name	Анодная улица
+
+
+[out:json];way(51993170);out;
